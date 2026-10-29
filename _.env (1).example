@@ -1,0 +1,7 @@
+DATABASE_URL=PASTE_YOUR_RENDER_POSTGRES_INTERNAL_DATABASE_URL
+DATABASE_SSL=false
+DATABASE_SSL_REJECT_UNAUTHORIZED=true
+JWT_SECRET=replace-with-a-random-secret-at-least-32-characters
+NODE_ENV=production
+PORT=3000
+FRONTEND_ORIGIN=https://your-frontend-url.onrender.com
