@@ -63,14 +63,18 @@ input:focus{border-color:var(--green);box-shadow:0 0 0 3px #087f451a}
         </div>
         <button class="btn" type="submit">SIGH UP</button>
       </form>
-      <p class="security">Demo frontend: account details are saved only in this browser. Do not use a real or reused password.</p>
+      <p class="security">Your account is saved securely by the website backend. Never share your password.</p>
     </section>
 
     <section id="loginPage" class="hidden">
       <h2>Welcome back</h2>
-      <p class="sub">Your account has been registered. Enter your password to log in.</p>
+      <p class="sub">Enter your registered phone number and password to log in.</p>
       <div id="loginNotice" class="notice" role="alert"></div>
       <form id="loginForm" novalidate>
+        <div class="field">
+          <label for="loginPhone">WhatsApp number / Your number</label>
+          <input id="loginPhone" type="tel" inputmode="numeric" placeholder="07XXXXXXXX or 01XXXXXXXX" autocomplete="tel" required maxlength="10">
+        </div>
         <div class="field">
           <label for="loginPassword">Password</label>
           <input id="loginPassword" type="password" placeholder="Enter your sign-up password" autocomplete="current-password" required minlength="4" maxlength="10">
@@ -94,70 +98,137 @@ input:focus{border-color:var(--green);box-shadow:0 0 0 3px #087f451a}
 <script>
 (() => {
   const $ = id => document.getElementById(id);
+
+  // IMPORTANT: Replace this with your actual Render backend URL.
+  // Example: https://member-portal-api.onrender.com
+  const API_BASE_URL = "https://sighing-backend.onrender.com";
+
   const signupPage = $('signupPage');
   const loginPage = $('loginPage');
   const welcomePage = $('welcomePage');
-  let registeredUser = null;
 
   function showPage(page) {
     signupPage.classList.toggle('hidden', page !== 'signup');
     loginPage.classList.toggle('hidden', page !== 'login');
     welcomePage.classList.toggle('hidden', page !== 'welcome');
   }
+
   function message(element, text, type) {
     element.textContent = text;
     element.className = 'notice ' + type;
   }
+
   function validName(name) {
-    // Allow Unicode letters and spaces, but require at least one letter.
     return /^[\p{L}]+(?:[ \u00A0][\p{L}]+)*$/u.test(name.trim());
   }
+
   function validPhone(phone) {
     return /^(07|01)\d{8}$/.test(phone);
   }
 
-  $('signupForm').addEventListener('submit', event => {
+  async function apiRequest(path, data) {
+    if (API_BASE_URL.includes("YOUR-BACKEND-NAME")) {
+      throw new Error("Set API_BASE_URL in this file to your actual Render backend URL first.");
+    }
+
+    let response;
+    try {
+      response = await fetch(API_BASE_URL.replace(/\/+$/, '') + path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+    } catch (error) {
+      throw new Error("Cannot reach the backend. Check the backend URL and Render deployment.");
+    }
+
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(result.error || "Request failed. Please try again.");
+    }
+    return result;
+  }
+
+  $('signupForm').addEventListener('submit', async event => {
     event.preventDefault();
+
     const name = $('realName').value.trim().replace(/\s+/g, ' ');
     const phone = $('phone').value.trim();
     const password = $('signupPassword').value;
+    const notice = $('signupNotice');
 
     if (!validName(name)) {
-      message($('signupNotice'), 'Enter a real name using letters and spaces only. Numbers and symbols are not allowed.', 'error');
-      $('realName').focus(); return;
-    }
-    if (!validPhone(phone)) {
-      message($('signupNotice'), 'Enter exactly 10 digits, starting with 07 or 01 (for example, 0712345678).', 'error');
-      $('phone').focus(); return;
-    }
-    if (password.length < 4 || password.length > 10) {
-      message($('signupNotice'), 'Your password must be between 4 and 10 characters.', 'error');
-      $('signupPassword').focus(); return;
-    }
-
-    registeredUser = { name, phone, password };
-    $('signupNotice').className = 'notice';
-    $('loginPassword').value = '';
-    showPage('login');
-    $('loginPassword').focus();
-  });
-
-  $('loginForm').addEventListener('submit', event => {
-    event.preventDefault();
-    const password = $('loginPassword').value;
-    if (!registeredUser) {
-      showPage('signup');
-      message($('signupNotice'), 'Please create an account first.', 'error');
+      message(notice, 'Enter a real name using letters and spaces only. Numbers and symbols are not allowed.', 'error');
+      $('realName').focus();
       return;
     }
-    if (password !== registeredUser.password) {
-      message($('loginNotice'), 'Incorrect password. Please try again.', 'error');
-      $('loginPassword').select(); return;
+    if (!validPhone(phone)) {
+      message(notice, 'Enter exactly 10 digits, starting with 07 or 01.', 'error');
+      $('phone').focus();
+      return;
     }
-    $('showName').textContent = registeredUser.name;
-    $('showPhone').textContent = registeredUser.phone;
-    $('loginNotice').className = 'notice';
-    showPage('welcome');
+    if (password.length < 4 || password.length > 10) {
+      message(notice, 'Your password must be between 4 and 10 characters.', 'error');
+      $('signupPassword').focus();
+      return;
+    }
+
+    const button = $('signupForm').querySelector('button[type="submit"]');
+    button.disabled = true;
+    button.textContent = 'REGISTERING...';
+
+    try {
+      const result = await apiRequest('/api/signup', {
+        realName: name,
+        phone,
+        password
+      });
+
+      $('loginPhone').value = phone;
+      $('loginPassword').value = '';
+      message($('loginNotice'), result.message || 'Registration successful. Please log in.', 'success');
+      message(notice, result.message || 'Registration successful.', 'success');
+      showPage('login');
+      $('loginPassword').focus();
+    } catch (error) {
+      message(notice, error.message, 'error');
+    } finally {
+      button.disabled = false;
+      button.textContent = 'SIGH UP';
+    }
+  });
+
+  $('loginForm').addEventListener('submit', async event => {
+    event.preventDefault();
+
+    const phone = $('loginPhone').value.trim();
+    const password = $('loginPassword').value;
+    const notice = $('loginNotice');
+
+    if (!validPhone(phone)) {
+      message(notice, 'Enter your registered 10-digit phone number starting with 07 or 01.', 'error');
+      $('loginPhone').focus();
+      return;
+    }
+
+    const button = $('loginForm').querySelector('button[type="submit"]');
+    button.disabled = true;
+    button.textContent = 'LOGGING IN...';
+
+    try {
+      const result = await apiRequest('/api/login', { phone, password });
+      const member = result.member;
+
+      $('showName').textContent = member.real_name;
+      $('showPhone').textContent = member.phone;
+      notice.className = 'notice';
+      showPage('welcome');
+    } catch (error) {
+      message(notice, error.message, 'error');
+    } finally {
+      button.disabled = false;
+      button.textContent = 'LOGIN';
+    }
   });
 
   $('logoutBtn').addEventListener('click', () => {
@@ -166,9 +237,10 @@ input:focus{border-color:var(--green);box-shadow:0 0 0 3px #087f451a}
     showPage('login');
   });
 
-  // Limit phone entry to digits and at most 10 characters.
-  $('phone').addEventListener('input', event => {
-    event.target.value = event.target.value.replace(/\D/g, '').slice(0, 10);
+  ['phone', 'loginPhone'].forEach(id => {
+    $(id).addEventListener('input', event => {
+      event.target.value = event.target.value.replace(/\D/g, '').slice(0, 10);
+    });
   });
 })();
 </script>
