@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign Up & Login</title>
+<style>
+:root{--green:#087f45;--dark:#075b35;--light:#eaf8ef;--white:#fff;--text:#183328;--muted:#66756d;--danger:#b42318}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;font-family:Arial,Helvetica,sans-serif;background:linear-gradient(145deg,#087f45,#0ca65b);display:flex;align-items:center;justify-content:center;padding:22px;color:var(--text)}
+.wrap{width:100%;max-width:470px}
+.brand{text-align:center;color:#fff;margin-bottom:18px}
+.brand h1{margin:0 0 6px;font-size:30px;font-weight:900;letter-spacing:.4px}
+.brand p{margin:0;font-weight:600;opacity:.92}
+.panel{background:var(--white);padding:28px;border-radius:20px;box-shadow:0 18px 50px #00351e40}
+h2{margin:0 0 8px;font-size:25px;font-weight:900}
+.sub{margin:0 0 22px;color:var(--muted);line-height:1.5}
+.field{margin-bottom:16px}
+label{display:block;font-weight:800;margin-bottom:7px;font-size:14px}
+input{width:100%;padding:13px 14px;border:1.5px solid #d4e1d9;border-radius:10px;font-size:16px;outline:none;background:#fcfffd}
+input:focus{border-color:var(--green);box-shadow:0 0 0 3px #087f451a}
+.hint{font-size:12px;color:var(--muted);margin-top:6px}
+.btn{width:100%;border:0;border-radius:11px;padding:14px 16px;background:var(--green);color:white;font-size:16px;font-weight:900;cursor:pointer;margin-top:4px}
+.btn:hover{background:var(--dark)}
+.btn.secondary{background:#e6f5eb;color:var(--dark);margin-top:10px}
+.btn.secondary:hover{background:#d6eedf}
+.notice{display:none;margin:0 0 14px;padding:11px 12px;border-radius:9px;font-size:14px;font-weight:700;line-height:1.4}
+.notice.error{display:block;background:#fff0ef;color:var(--danger)}
+.notice.success{display:block;background:#eaf8ef;color:var(--dark)}
+.hidden{display:none!important}
+.profile-list{display:grid;gap:12px;margin:20px 0}
+.detail{background:#f4faf6;border:1px solid #dfefe4;padding:13px 14px;border-radius:10px;overflow-wrap:anywhere}
+.detail span{display:block;font-size:12px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.detail strong{font-size:16px}
+.security{font-size:12px;color:var(--muted);line-height:1.5;margin-top:14px}
+@media(max-width:420px){.panel{padding:22px}.brand h1{font-size:26px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="brand"><h1>MEMBER PORTAL</h1><p>Create your account and sign in</p></header>
+
+  <main class="panel">
+    <section id="signupPage">
+      <h2>Create Account</h2>
+      <p class="sub">Enter your details below to register.</p>
+      <div id="signupNotice" class="notice" role="alert"></div>
+      <form id="signupForm" novalidate>
+        <div class="field">
+          <label for="realName">Real name</label>
+          <input id="realName" name="realName" type="text" placeholder="e.g. Salim Jimbo" autocomplete="name" required maxlength="80">
+          <div class="hint">Letters and spaces only. No numbers or symbols.</div>
+        </div>
+        <div class="field">
+          <label for="phone">WhatsApp number / Your number</label>
+          <input id="phone" name="phone" type="tel" inputmode="numeric" placeholder="07XXXXXXXX or 01XXXXXXXX" autocomplete="tel" required maxlength="10">
+          <div class="hint">Exactly 10 digits, starting with 07 or 01.</div>
+        </div>
+        <div class="field">
+          <label for="signupPassword">Password</label>
+          <input id="signupPassword" name="password" type="password" placeholder="Create a password" autocomplete="new-password" required minlength="4" maxlength="10">
+          <div class="hint">4–10 characters. Letters, numbers, and symbols are allowed.</div>
+        </div>
+        <button class="btn" type="submit">SIGH UP</button>
+      </form>
+      <p class="security">Demo frontend: account details are saved only in this browser. Do not use a real or reused password.</p>
+    </section>
+
+    <section id="loginPage" class="hidden">
+      <h2>Welcome back</h2>
+      <p class="sub">Your account has been registered. Enter your password to log in.</p>
+      <div id="loginNotice" class="notice" role="alert"></div>
+      <form id="loginForm" novalidate>
+        <div class="field">
+          <label for="loginPassword">Password</label>
+          <input id="loginPassword" type="password" placeholder="Enter your sign-up password" autocomplete="current-password" required minlength="4" maxlength="10">
+        </div>
+        <button class="btn" type="submit">LOGIN</button>
+      </form>
+    </section>
+
+    <section id="welcomePage" class="hidden">
+      <h2>Welcome!</h2>
+      <p class="sub">You have logged in successfully. Your registered details are shown below.</p>
+      <div class="profile-list">
+        <div class="detail"><span>Real name</span><strong id="showName"></strong></div>
+        <div class="detail"><span>WhatsApp number</span><strong id="showPhone"></strong></div>
+      </div>
+      <button class="btn secondary" id="logoutBtn" type="button">LOG OUT</button>
+      <p class="security">Your password is not displayed on this page.</p>
+    </section>
+  </main>
+</div>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const signupPage = $('signupPage');
+  const loginPage = $('loginPage');
+  const welcomePage = $('welcomePage');
+  let registeredUser = null;
+
+  function showPage(page) {
+    signupPage.classList.toggle('hidden', page !== 'signup');
+    loginPage.classList.toggle('hidden', page !== 'login');
+    welcomePage.classList.toggle('hidden', page !== 'welcome');
+  }
+  function message(element, text, type) {
+    element.textContent = text;
+    element.className = 'notice ' + type;
+  }
+  function validName(name) {
+    // Allow Unicode letters and spaces, but require at least one letter.
+    return /^[\p{L}]+(?:[ \u00A0][\p{L}]+)*$/u.test(name.trim());
+  }
+  function validPhone(phone) {
+    return /^(07|01)\d{8}$/.test(phone);
+  }
+
+  $('signupForm').addEventListener('submit', event => {
+    event.preventDefault();
+    const name = $('realName').value.trim().replace(/\s+/g, ' ');
+    const phone = $('phone').value.trim();
+    const password = $('signupPassword').value;
+
+    if (!validName(name)) {
+      message($('signupNotice'), 'Enter a real name using letters and spaces only. Numbers and symbols are not allowed.', 'error');
+      $('realName').focus(); return;
+    }
+    if (!validPhone(phone)) {
+      message($('signupNotice'), 'Enter exactly 10 digits, starting with 07 or 01 (for example, 0712345678).', 'error');
+      $('phone').focus(); return;
+    }
+    if (password.length < 4 || password.length > 10) {
+      message($('signupNotice'), 'Your password must be between 4 and 10 characters.', 'error');
+      $('signupPassword').focus(); return;
+    }
+
+    registeredUser = { name, phone, password };
+    $('signupNotice').className = 'notice';
+    $('loginPassword').value = '';
+    showPage('login');
+    $('loginPassword').focus();
+  });
+
+  $('loginForm').addEventListener('submit', event => {
+    event.preventDefault();
+    const password = $('loginPassword').value;
+    if (!registeredUser) {
+      showPage('signup');
+      message($('signupNotice'), 'Please create an account first.', 'error');
+      return;
+    }
+    if (password !== registeredUser.password) {
+      message($('loginNotice'), 'Incorrect password. Please try again.', 'error');
+      $('loginPassword').select(); return;
+    }
+    $('showName').textContent = registeredUser.name;
+    $('showPhone').textContent = registeredUser.phone;
+    $('loginNotice').className = 'notice';
+    showPage('welcome');
+  });
+
+  $('logoutBtn').addEventListener('click', () => {
+    $('loginPassword').value = '';
+    $('loginNotice').className = 'notice';
+    showPage('login');
+  });
+
+  // Limit phone entry to digits and at most 10 characters.
+  $('phone').addEventListener('input', event => {
+    event.target.value = event.target.value.replace(/\D/g, '').slice(0, 10);
+  });
+})();
+</script>
+</body>
+</html>
